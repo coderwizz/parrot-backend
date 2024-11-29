@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "EmojiMatcher.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/pythonEmojiMatcher",
+      "dest": "EmojiMatcher.py"
+    }
+  ]
+}
