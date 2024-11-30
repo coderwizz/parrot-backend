@@ -10,7 +10,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 # Enable CORS for all domains and routes
-CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": "*"}})
+CORS(app, supports_credentials=True)
 
 # Global variables
 keywords = []
@@ -55,30 +55,27 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
 def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
-@app.route('/api/pythonEmojiMatcher', methods=['POST'])
+@app.route('/api/pythonEmojiMatcher', methods=['POST', 'OPTIONS'])
 def python_emoji_matcher():
-    # Check for uploaded image
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({"message": "CORS preflight successful"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response, 200
+
+    # Process POST request
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
 
     image_file = request.files['image']
-    
-    # Save the image in static/image directory
     image_path = save_image(image_file)
-
-    # Get the public URI for the saved image
     image_uri = url_for('static', filename=f'image/{image_file.filename}', _external=True)
 
-    # Get the image embedding using Replicate's CLIP model
     image_embedding = get_image_embedding(image_uri)  # Pass the public URI
-
-    # Find the best matching word from the 2800 keywords list
     word = find_best_matching_word(image_embedding)
-
-    # Get the embedding of the word from the loaded keyword embeddings
     word_embedding = get_keyword_embedding(word)
-
-    # Find the closest emoji based on word embedding
     best_emoji = find_closest_emoji(word_embedding)
 
     # Delete the image after processing
@@ -140,6 +137,16 @@ def find_closest_emoji(word_embedding):
             best_emoji = emoji
 
     return best_emoji
+
+# Preflight handling for all routes
+@app.before_request
+def handle_options_request():
+    if request.method == "OPTIONS":
+        response = jsonify({"message": "CORS preflight successful"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response, 200
 
 if __name__ == '__main__':
     # Load data at startup
