@@ -149,32 +149,32 @@ def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
     # Randomly select 200 keywords from the list
     selected_keywords = np.random.choice(keywords, size=200, replace=False)
-
-    # Join the selected keywords into a single string
-    keywords_string = " | ".join(selected_keywords)  # Use the random 200 keywords
+    
+    keywords_string = " | ".join(selected_keywords)  # Concatenate keywords string
     
     input_data = {
-        "text": keywords_string,  # Use the concatenated keyword string
+        "text": keywords_string,  # Use the concatenated keywords
         "image": image_uri  # Pass the public URI of the image
     }
 
     try:
         # Request the image embedding
-        output = replicate.run(
+        prediction = replicate.run(
             "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
             input=input_data
         )
 
-        # Poll for completion and return once done
-        while output.get("status") != "succeeded":
+        # Poll for completion and check if the model has succeeded
+        while prediction['status'] != 'succeeded':
             time.sleep(5)  # Wait for 5 seconds before checking again
-            output = replicate.get(output["id"])
+            prediction = replicate.get(prediction['id'])
 
-        return np.array(output["output"])
-    
+        # Extract the embedding once the model completes
+        return np.array(prediction['output'])  # Assuming 'output' contains the embedding
+
     except Exception as e:
         print(f"Error getting image embedding from Replicate: {e}")
-        return np.zeros(512)  # Return a zero vector if error occurs
+        return np.zeros(512)  # Return a zero vector in case of error
 
 def find_best_matching_word(image_embedding, keywords):
     """Find the best matching word from the keywords based on the image embedding."""
