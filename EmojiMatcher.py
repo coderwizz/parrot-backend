@@ -1,47 +1,49 @@
-import json
-import numpy as np
-import torch
 import os
-from gensim.models import KeyedVectors
+import json
 from flask import Flask, request, jsonify
-from transformers import CLIPProcessor, CLIPModel
-from PIL import Image
+import replicate
+import numpy as np
 import pandas as pd
+from gensim.models import KeyedVectors
 
-# Initialize the Flask app
+# Initialize Flask app
 app = Flask(__name__)
 
-# Initialize the CLIP model and processor
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch16")
-processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
+# Set the static folder for images
+app.config['UPLOAD_FOLDER'] = 'static/images'
 
-# Load pre-trained emoji embeddings
-with open('emoji_embeddings.json', 'r') as f:
-    emoji_embeddings = json.load(f)
-
-# Define the file path for the Word2Vec model
+# Load pre-trained Word2Vec model
 word2vec_model_path = 'word2vec-small.model'
-
-# Load the pre-trained Word2Vec model globally
 word2vec_model = KeyedVectors.load(word2vec_model_path)
 
+# Global variables
+keywords = []
+emoji_embeddings = {}
+
+# Load the list of keywords from Excel
 def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
+    global keywords  # Use the global variable
     try:
         df = pd.read_excel(excel_file, engine='openpyxl')
     except Exception as e:
         print(f"Error loading Excel file: {e}")
         return []
 
-    # Assuming the 'pleasure' column contains the emoji words
     if 'pleasure' not in df.columns:
         print("Column 'pleasure' not found.")
         return []
 
-    # Extract the words as a list from the 'pleasure' column
     keywords = df['pleasure'].dropna().tolist()
     keywords = [keyword.strip() for keyword in keywords if isinstance(keyword, str)]
 
-    return keywords
+# Load emoji embeddings from a JSON file
+def load_emoji_embeddings(json_file='emoji_embeddings.json'):
+    global emoji_embeddings  # Access the global emoji_embeddings variable
+    try:
+        with open(json_file, 'r') as file:
+            emoji_embeddings = json.load(file)
+    except Exception as e:
+        print(f"Error loading emoji embeddings from JSON file: {e}")
 
 # Cosine similarity function
 def cosine_similarity(vec1, vec2):
@@ -49,20 +51,19 @@ def cosine_similarity(vec1, vec2):
 
 @app.route('/pythonEmojiMatcher', methods=['POST'])
 def python_emoji_matcher():
-    # Check if the image is in the request
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
 
-    # Get the image from the request
     image_file = request.files['image']
+    image_url = save_image(image_file)  # Save the image and get the URL
 
-    # Convert image to PIL format
-    image = Image.open(image_file.stream)
+    # Get the image embedding using Replicate's CLIP model
+    image_embedding = get_image_embedding(image_url)
 
-    # Get the embedding for the image
-    image_embedding = get_image_embedding(image)
+    # Clean up: Delete the image after it has been processed
+    delete_image(image_url)
 
-    # Find the best matching word
+    # Find the best matching word from the 2800 keywords list
     word = find_best_matching_word(image_embedding)
 
     # Get the Word2Vec embedding of the word
@@ -73,36 +74,58 @@ def python_emoji_matcher():
 
     return jsonify({'bestEmoji': best_emoji})
 
-def get_image_embedding(image):
-    # Preprocess the image for CLIP
-    inputs = processor(images=image, return_tensors="pt", padding=True)
-    with torch.no_grad():
-        # Extract image features
-        image_features = model.get_image_features(**inputs)
-    return image_features[0].numpy()
+def save_image(image_file):
+    # Ensure the directory exists
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+
+    # Save the image with a unique filename
+    image_filename = f"{str(np.random.randint(1000000))}.jpg"
+    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+
+    # Save the image to disk
+    image_file.save(image_path)
+
+    # Construct the URL for deployment (e.g., on vercel.sample.com)
+    image_url = f"https://vercel.sample.com/{app.config['UPLOAD_FOLDER']}/{image_filename}"
+    
+    return image_url
+
+def delete_image(image_url):
+    # Extract the image filename from the URL
+    image_filename = image_url.split('/')[-1]
+    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+    
+    # Delete the image file from the server
+    if os.path.exists(image_path):
+        os.remove(image_path)
+
+def get_image_embedding(image_url):
+    # Create a string of keywords separated by " | "
+    keywords_string = " | ".join(keywords)  # Assuming 'keywords' is globally loaded
+
+    input_data = {
+        "input": {
+            "image": image_url,
+            "text": keywords_string  # Use the concatenated keyword string
+        }
+    }
+    # Get the image embedding via Replicate
+    output = replicate.run(
+        "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
+        input=input_data
+    )
+    return np.array(output)
 
 def find_best_matching_word(image_embedding):
-    candidate_words = load_keywords_from_excel()  # Load the emoji keywords list dynamically
-    batch_size = 64  # You can adjust the batch size as per your memory constraints
-    best_word = ''
-    best_score = -float('inf')
-
-    # Process the candidate words in batches
-    for i in range(0, len(candidate_words), batch_size):
-        batch_words = candidate_words[i:i+batch_size]
-        
-        # Preprocess the batch of words for CLIP
-        inputs = processor(text=batch_words, return_tensors="pt", padding=True)
-        with torch.no_grad():
-            word_features = model.get_text_features(**inputs)
-
-        # Calculate cosine similarity for each word in the batch
-        for idx, word in enumerate(batch_words):
-            score = cosine_similarity(word_features[idx].numpy(), image_embedding)
-            if score > best_score:
-                best_score = score
-                best_word = word
-
+    global keywords  # Access global keywords list
+    
+    # Find the index of the highest value in the image_embedding array
+    best_index = np.argmax(image_embedding)  # Get index of highest value
+    
+    # Return the keyword corresponding to that index
+    best_word = keywords[best_index]
+    
     return best_word
 
 def get_word2vec_embedding(word):
@@ -115,6 +138,7 @@ def find_closest_emoji(word_embedding):
     best_emoji = ''
     best_score = -float('inf')
 
+    # Iterate through the loaded emoji embeddings
     for emoji, emoji_embedding in emoji_embeddings.items():
         score = cosine_similarity(word_embedding, emoji_embedding)
         if score > best_score:
@@ -124,4 +148,8 @@ def find_closest_emoji(word_embedding):
     return best_emoji
 
 if __name__ == '__main__':
+    # Load the keywords and emoji embeddings once when the app starts
+    load_keywords_from_excel()
+    load_emoji_embeddings()  # Load emoji embeddings from JSON
+
     app.run(debug=True, host='0.0.0.0', port=3000)
