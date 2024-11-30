@@ -10,7 +10,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 # Enable CORS for all domains and routes
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": "*"}})
 
 # Global variables
 keywords = []
