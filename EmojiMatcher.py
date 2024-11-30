@@ -4,7 +4,6 @@ from flask import Flask, request, jsonify
 import replicate
 import numpy as np
 import pandas as pd
-from gensim.models import KeyedVectors
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -12,13 +11,10 @@ app = Flask(__name__)
 # Set the static folder for images
 app.config['UPLOAD_FOLDER'] = 'static/images'
 
-# Load pre-trained Word2Vec model
-word2vec_model_path = 'word2vec-small.model'
-word2vec_model = KeyedVectors.load(word2vec_model_path)
-
 # Global variables
 keywords = []
 emoji_embeddings = {}
+keyword_embeddings = {}  # This will store the keyword embeddings from the JSON file
 
 # Load the list of keywords from Excel
 def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
@@ -45,6 +41,15 @@ def load_emoji_embeddings(json_file='emoji_embeddings.json'):
     except Exception as e:
         print(f"Error loading emoji embeddings from JSON file: {e}")
 
+# Load keyword embeddings from the JSON file
+def load_keyword_embeddings(json_file='keyword_embeddings.json'):
+    global keyword_embeddings  # Access the global keyword_embeddings variable
+    try:
+        with open(json_file, 'r') as file:
+            keyword_embeddings = json.load(file)
+    except Exception as e:
+        print(f"Error loading keyword embeddings from JSON file: {e}")
+
 # Cosine similarity function
 def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
@@ -66,8 +71,8 @@ def python_emoji_matcher():
     # Find the best matching word from the 2800 keywords list
     word = find_best_matching_word(image_embedding)
 
-    # Get the Word2Vec embedding of the word
-    word_embedding = get_word2vec_embedding(word)
+    # Get the embedding of the word from the loaded keyword embeddings
+    word_embedding = get_keyword_embedding(word)
 
     # Find the closest emoji based on word embedding
     best_emoji = find_closest_emoji(word_embedding)
@@ -128,11 +133,13 @@ def find_best_matching_word(image_embedding):
     
     return best_word
 
-def get_word2vec_embedding(word):
+# Update this function to get embeddings from the loaded JSON data
+def get_keyword_embedding(word):
     try:
-        return word2vec_model[word]
-    except KeyError:
-        return np.zeros(word2vec_model.vector_size)
+        return np.array(keyword_embeddings.get(word, np.zeros(300)))  # Assuming vector size of 300
+    except Exception as e:
+        print(f"Error fetching embedding for word '{word}': {e}")
+        return np.zeros(300)  # Default zero vector if not found
 
 def find_closest_emoji(word_embedding):
     best_emoji = ''
@@ -151,5 +158,6 @@ if __name__ == '__main__':
     # Load the keywords and emoji embeddings once when the app starts
     load_keywords_from_excel()
     load_emoji_embeddings()  # Load emoji embeddings from JSON
+    load_keyword_embeddings()  # Load keyword embeddings from JSON
 
     app.run(debug=True, host='0.0.0.0', port=3000)
