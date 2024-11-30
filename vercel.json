@@ -8,7 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/api/pythonEmojiMatcher",
+      "src": "/api/EmojiMatcher",
       "dest": "/EmojiMatcher.py",
       "headers": {
         "Access-Control-Allow-Origin": "*",
