@@ -1,18 +1,21 @@
 import os
 import json
-from flask import Flask, request, jsonify, url_for
+import requests
+from flask import Flask, request, jsonify
 import replicate
 import numpy as np
 import pandas as pd
 from flask_cors import CORS
 import tempfile
-import shutil
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Enable CORS for all domains and routes
 CORS(app, supports_credentials=True)
+
+# Imgur API Client ID (use your own generated client ID)
+IMGUR_CLIENT_ID = os.environ.get('IMGUR_CLIENT_ID')
 
 # Load the list of keywords from Excel
 def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
@@ -70,7 +73,12 @@ def python_emoji_matcher():
 
     image_file = request.files['image']
     image_path = save_image(image_file)  # Save the image to a temporary directory
-    image_uri = url_for('static', filename=f'image/{os.path.basename(image_path)}', _external=True)
+    
+    # Upload the image to Imgur and get the public URL
+    image_uri = upload_image_to_imgur(image_path)
+
+    if not image_uri:
+        return jsonify({'error': 'Failed to upload image to Imgur'}), 400
 
     # Load necessary data
     keywords = load_keywords_from_excel()  # Load the keywords from Excel
@@ -92,7 +100,6 @@ def python_emoji_matcher():
 
 def save_image(image_file):
     """Save the uploaded image to a temporary writable directory and return the file path."""
-    # Use a temporary directory for saving images
     temp_dir = tempfile.mkdtemp()  # Create a temporary directory
     image_path = os.path.join(temp_dir, image_file.filename)
 
@@ -100,13 +107,30 @@ def save_image(image_file):
     image_file.save(image_path)
     return image_path
 
+def upload_image_to_imgur(image_path):
+    """Upload the image to Imgur and return the image URL."""
+    url = "https://api.imgur.com/3/image"
+    headers = {
+        'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'
+    }
+
+    with open(image_path, 'rb') as image_file:
+        payload = {
+            'image': image_file.read(),
+            'type': 'file'
+        }
+        response = requests.post(url, headers=headers, files=payload)
+        response_data = response.json()
+
+        if response.status_code == 200:
+            return response_data['data']['link']
+        else:
+            print(f"Imgur upload failed: {response_data.get('data', {}).get('error', 'Unknown error')}")
+            return None
+
 def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
     keywords_string = " | ".join(keywords)  # Use the passed keywords list
-    
-    # Debugging: Print the image URI and text (keywords_string)
-    print(f"Image URI: {image_uri}")
-    print(f"Text (keywords): {keywords_string}")
     
     input_data = {
         "input": {
@@ -115,19 +139,11 @@ def get_image_embedding(image_uri, keywords):
         }
     }
 
-    # Debugging: Check the input_data structure
-    print(f"Input data for Replicate: {json.dumps(input_data, indent=2)}")
-    
-    # Call Replicate model for the image embedding
     try:
         output = replicate.run(
             "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
             input=input_data
         )
-        
-        # Debugging: Log the output from Replicate API
-        print(f"Replicate API output: {output}")
-
         return np.array(output)
     
     except Exception as e:
