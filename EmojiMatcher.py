@@ -166,7 +166,7 @@ def get_image_embedding(image_uri, keywords):
 
         # Check if the prediction contains valid output
         if isinstance(prediction, list) and len(prediction) > 0:
-            return np.array(prediction[0])  # Assuming the first item in the list is the embedding
+            return np.array(prediction)  
         elif isinstance(prediction, dict):
             return np.array(prediction.get('output', np.zeros(512)))  # Default to zero vector if no output key
 
