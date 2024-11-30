@@ -99,6 +99,11 @@ def save_image(image_file):
 def get_image_embedding(image_uri):
     """Get the image embedding using Replicate's CLIP model."""
     keywords_string = " | ".join(keywords)  # Assuming 'keywords' is globally loaded
+    
+    # Debugging: Print the image URI and text (keywords_string)
+    print(f"Image URI: {image_uri}")
+    print(f"Text (keywords): {keywords_string}")
+    
     input_data = {
         "input": {
             "image": image_uri,  # Pass the public URI of the image
