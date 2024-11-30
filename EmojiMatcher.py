@@ -5,12 +5,17 @@ import replicate
 import numpy as np
 import pandas as pd
 from flask_cors import CORS
+import logging
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Enable CORS for all domains and routes
 CORS(app, supports_credentials=True)
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)  # Use INFO or DEBUG for more verbose logging
+logger = logging.getLogger(__name__)
 
 # Global variables
 keywords = []
@@ -23,15 +28,16 @@ def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
     try:
         df = pd.read_excel(excel_file, engine='openpyxl')
     except Exception as e:
-        print(f"Error loading Excel file: {e}")
+        logger.error(f"Error loading Excel file: {e}")
         return []
 
     if 'pleasure' not in df.columns:
-        print("Column 'pleasure' not found.")
+        logger.error("Column 'pleasure' not found.")
         return []
 
     keywords = df['pleasure'].dropna().tolist()
     keywords = [keyword.strip() for keyword in keywords if isinstance(keyword, str)]
+    logger.info(f"Loaded {len(keywords)} keywords.")
 
 # Load emoji embeddings from a JSON file
 def load_emoji_embeddings(json_file='emoji_embeddings.json'):
@@ -39,8 +45,9 @@ def load_emoji_embeddings(json_file='emoji_embeddings.json'):
     try:
         with open(json_file, 'r') as file:
             emoji_embeddings = json.load(file)
+        logger.info(f"Loaded {len(emoji_embeddings)} emoji embeddings.")
     except Exception as e:
-        print(f"Error loading emoji embeddings from JSON file: {e}")
+        logger.error(f"Error loading emoji embeddings from JSON file: {e}")
 
 # Load keyword embeddings from the JSON file
 def load_keyword_embeddings(json_file='keyword_embeddings.json'):
@@ -48,8 +55,9 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
     try:
         with open(json_file, 'r') as file:
             keyword_embeddings = json.load(file)
+        logger.info(f"Loaded {len(keyword_embeddings)} keyword embeddings.")
     except Exception as e:
-        print(f"Error loading keyword embeddings from JSON file: {e}")
+        logger.error(f"Error loading keyword embeddings from JSON file: {e}")
 
 # Cosine similarity function
 def cosine_similarity(vec1, vec2):
@@ -59,6 +67,7 @@ def cosine_similarity(vec1, vec2):
 def python_emoji_matcher():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
+        logger.info("Handling OPTIONS request.")
         response = jsonify({"message": "CORS preflight successful"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -67,6 +76,7 @@ def python_emoji_matcher():
 
     # Process POST request
     if 'image' not in request.files:
+        logger.error('No image file provided')
         return jsonify({'error': 'No image file provided'}), 400
 
     image_file = request.files['image']
@@ -80,6 +90,7 @@ def python_emoji_matcher():
 
     # Delete the image after processing
     os.remove(image_path)
+    logger.info(f"Processed image and found emoji: {best_emoji}")
 
     return jsonify({
         'bestEmoji': best_emoji,
@@ -91,19 +102,19 @@ def save_image(image_file):
     image_path = os.path.join('static', 'image', image_file.filename)
     os.makedirs(os.path.dirname(image_path), exist_ok=True)  # Ensure the directory exists
     image_file.save(image_path)
+    logger.info(f"Saved image to {image_path}")
     return image_path
 
 def get_image_embedding(image_uri):
     """Get the image embedding using Replicate's CLIP model."""
     keywords_string = " | ".join(keywords)  # Assuming 'keywords' is globally loaded
-
     input_data = {
         "input": {
             "image": image_uri,  # Pass the public URI of the image
             "text": keywords_string  # Use the concatenated keyword string
         }
     }
-
+    logger.info("Fetching image embedding from Replicate...")
     output = replicate.run(
         "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
         input=input_data
@@ -115,6 +126,7 @@ def find_best_matching_word(image_embedding):
     global keywords
     best_index = np.argmax(image_embedding)
     best_word = keywords[best_index]
+    logger.info(f"Best matching word: {best_word}")
     return best_word
 
 def get_keyword_embedding(word):
@@ -122,7 +134,7 @@ def get_keyword_embedding(word):
     try:
         return np.array(keyword_embeddings.get(word, np.zeros(300)))
     except Exception as e:
-        print(f"Error fetching embedding for word '{word}': {e}")
+        logger.error(f"Error fetching embedding for word '{word}': {e}")
         return np.zeros(300)
 
 def find_closest_emoji(word_embedding):
@@ -136,6 +148,7 @@ def find_closest_emoji(word_embedding):
             best_score = score
             best_emoji = emoji
 
+    logger.info(f"Closest emoji found: {best_emoji}")
     return best_emoji
 
 # Preflight handling for all routes
@@ -155,4 +168,5 @@ if __name__ == '__main__':
     load_keyword_embeddings()  # Load keyword embeddings from JSON
 
     # Run the Flask app
+    logger.info("Starting Flask app...")
     app.run(debug=False, host='0.0.0.0', port=3000)
