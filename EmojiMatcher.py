@@ -14,14 +14,8 @@ app = Flask(__name__)
 # Enable CORS for all domains and routes
 CORS(app, supports_credentials=True)
 
-# Global variables
-keywords = []
-emoji_embeddings = {}
-keyword_embeddings = {}
-
 # Load the list of keywords from Excel
 def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
-    global keywords
     try:
         df = pd.read_excel(excel_file, engine='openpyxl')
     except Exception as e:
@@ -32,24 +26,25 @@ def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
 
     keywords = df['pleasure'].dropna().tolist()
     keywords = [keyword.strip() for keyword in keywords if isinstance(keyword, str)]
+    return keywords
 
 # Load emoji embeddings from a JSON file
 def load_emoji_embeddings(json_file='emoji_embeddings.json'):
-    global emoji_embeddings
     try:
         with open(json_file, 'r') as file:
             emoji_embeddings = json.load(file)
     except Exception as e:
-        pass
+        emoji_embeddings = {}
+    return emoji_embeddings
 
 # Load keyword embeddings from the JSON file
 def load_keyword_embeddings(json_file='keyword_embeddings.json'):
-    global keyword_embeddings
     try:
         with open(json_file, 'r') as file:
             keyword_embeddings = json.load(file)
     except Exception as e:
-        pass
+        keyword_embeddings = {}
+    return keyword_embeddings
 
 # Cosine similarity function
 def cosine_similarity(vec1, vec2):
@@ -73,10 +68,15 @@ def python_emoji_matcher():
     image_path = save_image(image_file)  # Save the image to a temporary directory
     image_uri = url_for('static', filename=f'image/{os.path.basename(image_path)}', _external=True)
 
-    image_embedding = get_image_embedding(image_uri)  # Pass the public URI
-    word = find_best_matching_word(image_embedding)
-    word_embedding = get_keyword_embedding(word)
-    best_emoji = find_closest_emoji(word_embedding)
+    # Load necessary data
+    keywords = load_keywords_from_excel()  # Load the keywords from Excel
+    emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
+    keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
+
+    image_embedding = get_image_embedding(image_uri, keywords)  # Pass keywords here
+    word = find_best_matching_word(image_embedding, keywords)  # Pass keywords here
+    word_embedding = get_keyword_embedding(word, keyword_embeddings)  # Pass keyword embeddings here
+    best_emoji = find_closest_emoji(word_embedding, emoji_embeddings)  # Pass emoji embeddings here
 
     # Delete the image after processing
     os.remove(image_path)
@@ -96,9 +96,9 @@ def save_image(image_file):
     image_file.save(image_path)
     return image_path
 
-def get_image_embedding(image_uri):
+def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
-    keywords_string = " | ".join(keywords)  # Assuming 'keywords' is globally loaded
+    keywords_string = " | ".join(keywords)  # Use the passed keywords list
     
     # Debugging: Print the image URI and text (keywords_string)
     print(f"Image URI: {image_uri}")
@@ -122,21 +122,20 @@ def get_image_embedding(image_uri):
         print(f"Error getting image embedding: {e}")
         return np.zeros(512)  # Return a zero vector if error occurs
 
-def find_best_matching_word(image_embedding):
+def find_best_matching_word(image_embedding, keywords):
     """Find the best matching word from the keywords based on the image embedding."""
-    global keywords
     best_index = np.argmax(image_embedding)
     best_word = keywords[best_index]
     return best_word
 
-def get_keyword_embedding(word):
+def get_keyword_embedding(word, keyword_embeddings):
     """Get the embedding for a given keyword."""
     try:
         return np.array(keyword_embeddings.get(word, np.zeros(300)))
     except Exception as e:
         return np.zeros(300)
 
-def find_closest_emoji(word_embedding):
+def find_closest_emoji(word_embedding, emoji_embeddings):
     """Find the closest emoji for the given word embedding."""
     best_emoji = ''
     best_score = -float('inf')
@@ -161,6 +160,6 @@ def handle_options_request():
 
 if __name__ == '__main__':
     # Load data at startup
-    load_keywords_from_excel()
-    load_emoji_embeddings()  # Load emoji embeddings from JSON
-    load_keyword_embeddings()  # Load keyword embeddings from JSON
+    keywords = load_keywords_from_excel()
+    emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
+    keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
