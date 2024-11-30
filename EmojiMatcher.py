@@ -19,9 +19,11 @@ def load_keywords_from_excel(excel_file='key_words_vocab.xlsx'):
     try:
         df = pd.read_excel(excel_file, engine='openpyxl')
     except Exception as e:
+        print(f"Error loading keywords from Excel: {e}")
         return []
 
     if 'pleasure' not in df.columns:
+        print("No 'pleasure' column found in the Excel file")
         return []
 
     keywords = df['pleasure'].dropna().tolist()
@@ -34,6 +36,7 @@ def load_emoji_embeddings(json_file='emoji_embeddings.json'):
         with open(json_file, 'r') as file:
             emoji_embeddings = json.load(file)
     except Exception as e:
+        print(f"Error loading emoji embeddings: {e}")
         emoji_embeddings = {}
     return emoji_embeddings
 
@@ -43,6 +46,7 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
         with open(json_file, 'r') as file:
             keyword_embeddings = json.load(file)
     except Exception as e:
+        print(f"Error loading keyword embeddings: {e}")
         keyword_embeddings = {}
     return keyword_embeddings
 
@@ -111,15 +115,23 @@ def get_image_embedding(image_uri, keywords):
         }
     }
 
+    # Debugging: Check the input_data structure
+    print(f"Input data for Replicate: {json.dumps(input_data, indent=2)}")
+    
     # Call Replicate model for the image embedding
     try:
         output = replicate.run(
             "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
             input=input_data
         )
+        
+        # Debugging: Log the output from Replicate API
+        print(f"Replicate API output: {output}")
+
         return np.array(output)
+    
     except Exception as e:
-        print(f"Error getting image embedding: {e}")
+        print(f"Error getting image embedding from Replicate: {e}")
         return np.zeros(512)  # Return a zero vector if error occurs
 
 def find_best_matching_word(image_embedding, keywords):
@@ -133,6 +145,7 @@ def get_keyword_embedding(word, keyword_embeddings):
     try:
         return np.array(keyword_embeddings.get(word, np.zeros(300)))
     except Exception as e:
+        print(f"Error getting keyword embedding: {e}")
         return np.zeros(300)
 
 def find_closest_emoji(word_embedding, emoji_embeddings):
