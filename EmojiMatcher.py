@@ -14,6 +14,12 @@ app = Flask(__name__)
 # Enable CORS for all domains and routes
 CORS(app, supports_credentials=True)
 
+# Load the Replicate API token from the environment
+REPLICATE_API_TOKEN = os.environ.get('REPLICATE_API_TOKEN')
+
+# Initialize Replicate client with the API token
+replicate.Client(api_token=REPLICATE_API_TOKEN)
+
 # Imgur API Client ID (use your own generated client ID)
 IMGUR_CLIENT_ID = os.environ.get('IMGUR_CLIENT_ID')
 
@@ -85,6 +91,7 @@ def python_emoji_matcher():
     emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
     keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
 
+    # Get the image embedding using Replicate and keywords
     image_embedding = get_image_embedding(image_uri, keywords)  # Pass keywords here
     word = find_best_matching_word(image_embedding, keywords)  # Pass keywords here
     word_embedding = get_keyword_embedding(word, keyword_embeddings)  # Pass keyword embeddings here
@@ -133,10 +140,8 @@ def get_image_embedding(image_uri, keywords):
     keywords_string = " | ".join(keywords)  # Use the passed keywords list
     
     input_data = {
-        "input": {
-            "image": image_uri,  # Pass the public URI of the image
-            "text": keywords_string  # Use the concatenated keyword string
-        }
+        "image": image_uri,  # Pass the public URI of the image
+        "text": keywords_string  # Use the concatenated keyword string
     }
 
     try:
