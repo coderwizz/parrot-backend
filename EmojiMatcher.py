@@ -148,7 +148,7 @@ def upload_image_to_imgur(image_path):
 def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
     # Randomly select 200 keywords from the list
-    selected_keywords = np.random.choice(keywords, size=200, replace=False)
+    #selected_keywords = np.random.choice(keywords, size=200, replace=False)
     
     keywords_string = " | ".join(selected_keywords)  # Concatenate keywords string
     
