@@ -165,14 +165,14 @@ def get_image_embedding(image_uri, keywords):
         )
 
         # Poll for completion and check if the model has succeeded
-        while prediction.get('status') != 'succeeded':
+        while isinstance(prediction, list) or 'status' not in prediction or prediction['status'] != 'succeeded':
             time.sleep(5)  # Wait for 5 seconds before checking again
-            prediction = replicate.get(prediction['id'])
+            prediction = replicate.get(prediction[0]['id']) if isinstance(prediction, list) else replicate.get(prediction['id'])
 
         # Ensure 'prediction' is a list or dictionary and access the result
         if isinstance(prediction, dict):
             return np.array(prediction.get('output', np.zeros(512)))  # Default to zero vector if no output key
-        elif isinstance(prediction, list):
+        elif isinstance(prediction, list) and len(prediction) > 0:
             return np.array(prediction[0])  # Assuming the first item in the list is the embedding
 
     except Exception as e:
