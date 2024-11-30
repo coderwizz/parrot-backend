@@ -164,6 +164,9 @@ def get_image_embedding(image_uri, keywords):
             input=input_data
         )
 
+        # Print the prediction to the console/log
+        print("Prediction from Replicate:", prediction)
+        
         # Check if the prediction contains valid output
         if isinstance(prediction, list) and len(prediction) > 0:
             return np.array(prediction)  
