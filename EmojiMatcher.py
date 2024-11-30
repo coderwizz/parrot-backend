@@ -88,7 +88,7 @@ def python_emoji_matcher():
 
     # Load necessary data
     keywords = load_keywords_from_excel()  # Load the keywords from Excel
-    keywords = np.random.choice(keywords, size=1853, replace=False) # choose a random batch
+    keywords = np.random.choice(keywords, size=1682, replace=False) # choose a random batch
     emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
     keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
 
@@ -147,9 +147,6 @@ def upload_image_to_imgur(image_path):
         
 def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
-    # Randomly select 200 keywords from the list
-    #selected_keywords = np.random.choice(keywords, size=200, replace=False)
-    
     keywords_string = " | ".join(keywords)  # Concatenate keywords string
     
     input_data = {
