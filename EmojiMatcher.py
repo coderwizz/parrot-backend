@@ -148,10 +148,10 @@ def upload_image_to_imgur(image_path):
         else:
             error_message = response_data.get('data', {}).get('error', 'Unknown error')
             print(f"Imgur upload failed: {error_message}")
-            return None
+            return "https://imposter.org"
     except Exception as e:
         print(f"Error uploading image to Imgur: {e}")
-        return None
+        return "https://imposter.org"
         
 def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
