@@ -89,6 +89,7 @@ def python_emoji_matcher():
 
     # Load necessary data
     keywords = load_keywords_from_excel()  # Load the keywords from Excel
+    keywords = np.random.choice(keywords, size=800, replace=False) # choose a random batch
     emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
     keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
 
