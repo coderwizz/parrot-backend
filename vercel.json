@@ -9,7 +9,12 @@
   "routes": [
     {
       "src": "/api/pythonEmojiMatcher",
-      "dest": "/EmojiMatcher.py"
+      "dest": "/EmojiMatcher.py",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
     }
   ]
 }
