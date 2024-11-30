@@ -105,11 +105,17 @@ def get_image_embedding(image_uri):
             "text": keywords_string  # Use the concatenated keyword string
         }
     }
-    output = replicate.run(
-        "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
-        input=input_data
-    )
-    return np.array(output)
+
+    # Call Replicate model for the image embedding
+    try:
+        output = replicate.run(
+            "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
+            input=input_data
+        )
+        return np.array(output)
+    except Exception as e:
+        print(f"Error getting image embedding: {e}")
+        return np.zeros(512)  # Return a zero vector if error occurs
 
 def find_best_matching_word(image_embedding):
     """Find the best matching word from the keywords based on the image embedding."""
