@@ -8,8 +8,8 @@
   ],
   "routes": [
     {
-      "src": "/pythonEmojiMatcher",
-      "dest": "EmojiMatcher.py"
+      "src": "/api/pythonEmojiMatcher",
+      "dest": "/EmojiMatcher.py"
     }
   ]
 }
