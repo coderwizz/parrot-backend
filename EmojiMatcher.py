@@ -115,7 +115,7 @@ def save_image(image_file):
     return image_path
 
 def upload_image_to_imgur(image_path):
-    """Upload the image to Imgur and return the direct image URL."""
+    """Upload the image to Imgur and convert the link to use Rimgo for direct access."""
     url = "https://api.imgur.com/3/image"
     headers = {
         'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'
@@ -123,16 +123,19 @@ def upload_image_to_imgur(image_path):
 
     try:
         with open(image_path, 'rb') as image_file:
-            # Prepare payload for Imgur API
+            # Upload the image file
             files = {'image': image_file}
             response = requests.post(url, headers=headers, files=files)
 
-        # Parse the response from Imgur
+        # Parse the response
         response_data = response.json()
 
         if response.status_code == 200:
-            # Return the direct image URL (via the Imgur CDN)
-            return response_data['data']['link']
+            # Extract the Imgur ID and create the Rimgo link
+            imgur_link = response_data['data']['link']
+            imgur_id = imgur_link.split('/')[-1]  # Get the image ID
+            rimgo_link = f"https://rimgo.pussthecat.org/{imgur_id}"
+            return rimgo_link
         else:
             error_message = response_data.get('data', {}).get('error', 'Unknown error')
             print(f"Imgur upload failed: {error_message}")
