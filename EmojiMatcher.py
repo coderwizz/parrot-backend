@@ -55,7 +55,7 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
 def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
-@app.route('/api/pythonEmojiMatcher', methods=['POST', 'OPTIONS'])
+@app.route('/api/EmojiMatcher', methods=['POST', 'OPTIONS'])
 def python_emoji_matcher():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
@@ -153,3 +153,6 @@ if __name__ == '__main__':
     load_keywords_from_excel()
     load_emoji_embeddings()  # Load emoji embeddings from JSON
     load_keyword_embeddings()  # Load keyword embeddings from JSON
+
+    # Run the Flask app
+    app.run(debug=False, host='0.0.0.0', port=3000)
