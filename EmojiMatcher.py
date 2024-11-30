@@ -130,6 +130,7 @@ def upload_image_to_imgur(image_path):
         response_data = response.json()
 
         if response.status_code == 200:
+            # Return the direct URL of the image
             return response_data['data']['link']
         else:
             print(f"Imgur upload failed: {response_data.get('data', {}).get('error', 'Unknown error')}")
