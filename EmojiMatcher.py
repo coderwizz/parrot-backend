@@ -5,6 +5,8 @@ import replicate
 import numpy as np
 import pandas as pd
 from flask_cors import CORS
+import tempfile
+import shutil
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -68,8 +70,8 @@ def python_emoji_matcher():
         return jsonify({'error': 'No image file provided'}), 400
 
     image_file = request.files['image']
-    image_path = save_image(image_file)
-    image_uri = url_for('static', filename=f'image/{image_file.filename}', _external=True)
+    image_path = save_image(image_file)  # Save the image to a temporary directory
+    image_uri = url_for('static', filename=f'image/{os.path.basename(image_path)}', _external=True)
 
     image_embedding = get_image_embedding(image_uri)  # Pass the public URI
     word = find_best_matching_word(image_embedding)
@@ -85,8 +87,11 @@ def python_emoji_matcher():
     })
 
 def save_image(image_file):
-    """Save the uploaded image to a temporary directory and return the file path."""
-    image_path = os.path.join('static', 'image', image_file.filename)
+    """Save the uploaded image to a temporary writable directory and return the file path."""
+    # Use a temporary directory for saving images
+    temp_dir = tempfile.mkdtemp()  # Create a temporary directory
+    image_path = os.path.join(temp_dir, image_file.filename)
+
     os.makedirs(os.path.dirname(image_path), exist_ok=True)  # Ensure the directory exists
     image_file.save(image_path)
     return image_path
