@@ -140,8 +140,8 @@ def get_image_embedding(image_uri, keywords):
     keywords_string = " | ".join(keywords)  # Use the passed keywords list
     
     input_data = {
-        "image": image_uri,  # Pass the public URI of the image
-        "text": keywords_string  # Use the concatenated keyword string
+        "text": keywords_string,  # Use the concatenated keyword string
+        "image": image_uri  # Pass the public URI of the image
     }
 
     try:
