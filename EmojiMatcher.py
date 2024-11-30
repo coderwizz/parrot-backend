@@ -11,17 +11,12 @@ import time
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Enable CORS for all domains and routes
 CORS(app, supports_credentials=True)
 
 # Load the Replicate API token from the environment
 REPLICATE_API_TOKEN = os.environ.get('REPLICATE_API_TOKEN')
-
-# Initialize Replicate client with the API token
 replicate.Client(api_token=REPLICATE_API_TOKEN)
-
-# Imgur API Client ID (use your own generated client ID)
+# Imgur API Client ID 
 IMGUR_CLIENT_ID = os.environ.get('IMGUR_CLIENT_ID')
 
 # Load the list of keywords from Excel
@@ -64,11 +59,8 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
 def cosine_similarity(vec1, vec2):
     norm1 = np.linalg.norm(vec1)
     norm2 = np.linalg.norm(vec2)
-    
-    # Prevent division by zero
     if norm1 == 0 or norm2 == 0:
-        return 0  # or you can return np.nan, depending on your needs
-
+        return 0  
     return np.dot(vec1, vec2) / (norm1 * norm2)
 
 @app.route('/api/EmojiMatcher', methods=['POST', 'OPTIONS'])
@@ -101,17 +93,17 @@ def python_emoji_matcher():
     keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
 
     # Get the image embedding using Replicate and keywords
-    image_embedding = get_image_embedding(image_uri, keywords)  # Pass keywords here
-    word = find_best_matching_word(image_embedding, keywords)  # Pass keywords here
-    word_embedding = get_keyword_embedding(word, keyword_embeddings)  # Pass keyword embeddings here
-    best_emoji = find_closest_emoji(word_embedding, emoji_embeddings)  # Pass emoji embeddings here
+    image_embedding = get_image_embedding(image_uri, keywords) 
+    word = find_best_matching_word(image_embedding, keywords)  
+    word_embedding = get_keyword_embedding(word, keyword_embeddings)  
+    best_emoji = find_closest_emoji(word_embedding, emoji_embeddings)  
 
     # Delete the image after processing
     os.remove(image_path)
 
     return jsonify({
         'bestEmoji': best_emoji,
-        'imageUri': image_uri  # Return the URI for the image
+        'imageUri': image_uri  
     })
 
 def save_image(image_file):
@@ -171,9 +163,6 @@ def get_image_embedding(image_uri, keywords):
             "cjwbw/clip-vit-large-patch14:566ab1f111e526640c5154e712d4d54961414278f89d36590f1425badc763ecb", 
             input=input_data
         )
-
-        # Print the prediction to the console/log
-        print("Prediction from Replicate:", prediction)
         
         # Check if the prediction contains valid output
         if isinstance(prediction, list) and len(prediction) > 0:
