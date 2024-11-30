@@ -62,7 +62,14 @@ def load_keyword_embeddings(json_file='keyword_embeddings.json'):
 
 # Cosine similarity function
 def cosine_similarity(vec1, vec2):
-    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+    
+    # Prevent division by zero
+    if norm1 == 0 or norm2 == 0:
+        return 0  # or you can return np.nan, depending on your needs
+
+    return np.dot(vec1, vec2) / (norm1 * norm2)
 
 @app.route('/api/EmojiMatcher', methods=['POST', 'OPTIONS'])
 def python_emoji_matcher():
@@ -89,7 +96,7 @@ def python_emoji_matcher():
 
     # Load necessary data
     keywords = load_keywords_from_excel()  # Load the keywords from Excel
-    keywords = np.random.choice(keywords, size=800, replace=False) # choose a random batch
+    keywords = np.random.choice(keywords, size=1402, replace=False) # choose a random batch
     emoji_embeddings = load_emoji_embeddings()  # Load emoji embeddings from JSON
     keyword_embeddings = load_keyword_embeddings()  # Load keyword embeddings from JSON
 
