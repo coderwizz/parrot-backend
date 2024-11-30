@@ -164,20 +164,15 @@ def get_image_embedding(image_uri, keywords):
             input=input_data
         )
 
-        # Poll for completion and check if the model has succeeded
-        while isinstance(prediction, list) or 'status' not in prediction or prediction['status'] != 'succeeded':
-            time.sleep(5)  # Wait for 5 seconds before checking again
-            prediction = replicate.get(prediction[0]['id']) if isinstance(prediction, list) else replicate.get(prediction['id'])
-
-        # Ensure 'prediction' is a list or dictionary and access the result
-        if isinstance(prediction, dict):
-            return np.array(prediction.get('output', np.zeros(512)))  # Default to zero vector if no output key
-        elif isinstance(prediction, list) and len(prediction) > 0:
+        # Check if the prediction contains valid output
+        if isinstance(prediction, list) and len(prediction) > 0:
             return np.array(prediction[0])  # Assuming the first item in the list is the embedding
+        elif isinstance(prediction, dict):
+            return np.array(prediction.get('output', np.zeros(512)))  # Default to zero vector if no output key
 
     except Exception as e:
         print(f"Error getting image embedding from Replicate: {e}")
-        return np.zeros(512)  # Return a zero vector in case of error
+        return np.zeros(512)  # Return a zero vector in case of error     
 
 def find_best_matching_word(image_embedding, keywords):
     """Find the best matching word from the keywords based on the image embedding."""
