@@ -115,27 +115,32 @@ def save_image(image_file):
     return image_path
 
 def upload_image_to_imgur(image_path):
-    """Upload the image to Imgur and return the image URL."""
+    """Upload the image to Imgur and return the direct image URL."""
     url = "https://api.imgur.com/3/image"
     headers = {
         'Authorization': f'Client-ID {IMGUR_CLIENT_ID}'
     }
 
-    with open(image_path, 'rb') as image_file:
-        payload = {
-            'image': image_file.read(),
-            'type': 'file'
-        }
-        response = requests.post(url, headers=headers, files=payload)
+    try:
+        with open(image_path, 'rb') as image_file:
+            # Prepare payload for Imgur API
+            files = {'image': image_file}
+            response = requests.post(url, headers=headers, files=files)
+
+        # Parse the response from Imgur
         response_data = response.json()
 
         if response.status_code == 200:
-            # Return the direct URL of the image
+            # Return the direct image URL (via the Imgur CDN)
             return response_data['data']['link']
         else:
-            print(f"Imgur upload failed: {response_data.get('data', {}).get('error', 'Unknown error')}")
+            error_message = response_data.get('data', {}).get('error', 'Unknown error')
+            print(f"Imgur upload failed: {error_message}")
             return None
-
+    except Exception as e:
+        print(f"Error uploading image to Imgur: {e}")
+        return None
+        
 def get_image_embedding(image_uri, keywords):
     """Get the image embedding using Replicate's CLIP model."""
     keywords_string = " | ".join(keywords)  # Use the passed keywords list
